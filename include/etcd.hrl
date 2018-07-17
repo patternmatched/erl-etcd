@@ -4,7 +4,9 @@
     recursive = undefined :: undefined | boolean(),
     sorted = undefined :: undefined | boolean(),
     modified_index = undefined :: undefined | integer(),
-    quorum = undefined %% not sure about how to use it yet
+    quorum = undefined, %% not sure about how to use it yet
+    username :: undefined | string(),
+    password :: undefined | string()
     }).
 -record(etcd_modify_opts, {
     key = "" :: list(),
@@ -15,5 +17,7 @@
     dir = undefined :: boolean() | undefined,
     prev_exist = undefined :: boolean() | undefined,
     prev_value = undefined :: list() | undefined,
-    prev_index = undefined :: integer() | undefined
+    prev_index = undefined :: integer() | undefined,
+    username :: undefined | string(),
+    password :: undefined | string()
     }).
