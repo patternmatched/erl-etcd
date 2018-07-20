@@ -1,7 +1,7 @@
 -module(etcd).
 
 -export([
-    set/3, set/2, set/1, get/1, delete/1, list_dir/1,
+    set/4, set/3, set/1, get/1, delete/1, list_dir/1,
     create_with_auto_increase_key/1,
     watch/2, watch_dir/2, stop_watch/1,
     get_current_peer/0
@@ -10,17 +10,28 @@
 
 %%%% set up a key with value with a TTL value(in seconds).
 %%%% return is {ok, response string list from etcd}
--spec set(Key::list(), Value::list(), TTL::integer()) -> {ok, list()}| {fail, Reason::atom()}.
-set(Key, Value, TTL) ->
-    Opt = #etcd_modify_opts{key = Key, value = Value, ttl = TTL},
+-type kv() :: [{atom(), string()}].
+-spec set(Key::list(), Value::list(), TTL::integer(), AuthOpt::kv()) ->
+                 {ok, list()}| {fail, Reason::atom()}.
+set(Key, Value, TTL, AuthOpt) ->
+    Opt = #etcd_modify_opts{key = Key,
+                            value = Value,
+                            ttl = TTL,
+                            username = proplists:get_value(username, AuthOpt),
+                            password = proplists:get_value(password, AuthOpt)
+                           },
     Peer = get_current_peer(),
     etcd_worker:etcd_action(set, Peer ++ "/v2", Opt).
 
 %%%% set up a key with value WITHOUT a TTL value.
 %%%% return is {ok, response string list from etcd}
--spec set(Key::list(), Value::list()) -> {ok, list()} | {fail, Reason::atom()}.
-set(Key, Value ) ->
-    Opt = #etcd_modify_opts{key = Key, value = Value},
+-spec set(Key::list(), Value::list(), AuthOpt::kv()) -> {ok, list()} | {fail, Reason::atom()}.
+set(Key, Value, AuthOpt) ->
+    Opt = #etcd_modify_opts{key = Key,
+                            value = Value,
+                            username = proplists:get_value(username, AuthOpt),
+                            password = proplists:get_value(password, AuthOpt)
+                           },
     Peer = get_current_peer(),
     etcd_worker:etcd_action(set, Peer ++ "/v2", Opt).
 
@@ -44,11 +55,11 @@ create_with_auto_increase_key(Opts) ->
 -spec get(KeyOrOpts::list() | #etcd_read_opts{}) -> {ok, list()}| {fail, Reason::atom()}.
 get(KeyOrOpts) ->
     Opts = case is_record(KeyOrOpts, etcd_read_opts) of
-        true ->
-            KeyOrOpts;
-        false ->
-            #etcd_read_opts{key = KeyOrOpts}
-    end,
+               true ->
+                   KeyOrOpts;
+               false ->
+                   #etcd_read_opts{key = KeyOrOpts}
+           end,
     Peer = get_current_peer(),
     etcd_worker:etcd_action(get, Peer ++ "/v2", Opts).
 
@@ -61,11 +72,11 @@ get(KeyOrOpts) ->
 -spec list_dir(KeyOrOpts::list() | #etcd_read_opts{}) -> {ok, list()}| {fail, Reason::atom()}.
 list_dir(KeyOrOpts) ->
     Opts = case is_record(KeyOrOpts, etcd_read_opts) of
-        true ->
-            KeyOrOpts;
-        false ->
-            #etcd_read_opts{key = KeyOrOpts}
-    end,
+               true ->
+                   KeyOrOpts;
+               false ->
+                   #etcd_read_opts{key = KeyOrOpts}
+           end,
     Peer = get_current_peer(),
     case  etcd_worker:etcd_action(get, Peer ++ "/v2", Opts) of
         {ok, GetResult} ->
@@ -97,11 +108,11 @@ list_dir(KeyOrOpts) ->
 -spec delete(KeyOrOpts::list() | #etcd_modify_opts{}) -> {ok, list()}| {fail, Reason::atom()}.
 delete(KeyOrOpts) ->
     Opts = case is_record(KeyOrOpts, etcd_modify_opts) of
-        true ->
-            KeyOrOpts;
-        false ->
-            #etcd_modify_opts{key = KeyOrOpts}
-    end,
+               true ->
+                   KeyOrOpts;
+               false ->
+                   #etcd_modify_opts{key = KeyOrOpts}
+           end,
     Peer = get_current_peer(),
     etcd_worker:etcd_action(delete, Peer ++ "/v2", Opts).
 

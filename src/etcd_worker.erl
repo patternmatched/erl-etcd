@@ -134,7 +134,9 @@ check_peer_alive(Url) ->
     end.
 
 etcd_action(create, V2Url, Opts) ->
-    Header = [{"Content-Type", "application/x-www-form-urlencoded"}],
+    Header = [{"Content-Type", "application/x-www-form-urlencoded"}
+             |generate_headers(Opts)
+             ],
     {Body, QueryStr} = generate_modify_url_and_data_from_opts(Opts), 
     try ibrowse:send_req(V2Url ++ "/keys" ++ QueryStr, Header, post, Body, [], 5000) of
         {ok, ReturnCode, _Headers, RetBody} ->
@@ -160,7 +162,9 @@ etcd_action(create, V2Url, Opts) ->
             {fail, {Exception, Error}}
     end;
 etcd_action(set, V2Url, Opts) ->
-    Header = [{"Content-Type", "application/x-www-form-urlencoded"}],
+    Header = [{"Content-Type", "application/x-www-form-urlencoded"}
+             |generate_headers(Opts)
+             ],
     {Body, QueryStr} = generate_modify_url_and_data_from_opts(Opts), 
     try ibrowse:send_req(V2Url ++ "/keys" ++ QueryStr, Header, put, Body, [], 5000) of
         {ok, ReturnCode, _Headers, RetBody} ->
@@ -187,7 +191,8 @@ etcd_action(set, V2Url, Opts) ->
     end;
 etcd_action(get, V2Url, Opts) ->
     OptStr = generate_read_str_from_opts(Opts),
-    try ibrowse:send_req(V2Url ++ "/keys" ++ OptStr, [], get, [], [], 5000) of
+    Headers = generate_headers(Opts),
+    try ibrowse:send_req(V2Url ++ "/keys" ++ OptStr, Headers, get, [], [], 5000) of
         {ok, ReturnCode, _Headers, Body} ->
             case ReturnCode of
                 "200" -> 
@@ -213,7 +218,8 @@ etcd_action(get, V2Url, Opts) ->
 etcd_action(delete, V2Url, Opts) ->
     {_, OptStr} = generate_modify_url_and_data_from_opts(
         Opts#etcd_modify_opts{recursive = true, refresh = undefined}) ,
-    try ibrowse:send_req(V2Url ++ "/keys" ++ OptStr, [], delete, [], [], 5000) of
+    Header = generate_headers(Opts),
+    try ibrowse:send_req(V2Url ++ "/keys" ++ OptStr, Header, delete, [], [], 5000) of
         {ok, ReturnCode, _Headers, Body} ->
             case ReturnCode of
                 "200" -> 
@@ -273,6 +279,18 @@ generate_read_str_from_opts(Opts) ->
             %% but let's just ignore it so the gen server can just return a 404
             ""
     end.
+
+generate_headers(#etcd_read_opts{username=U, password=P})
+  when is_list(U) andalso is_list(P) ->
+    generate_headers(U, P);
+generate_headers(#etcd_modify_opts{username=U, password=P})
+  when is_list(U) andalso is_list(P) ->
+    generate_headers(U, P);
+generate_headers(_Opts) -> [].
+
+
+generate_headers(Username, Password) ->
+    [{"Authorization", "Basic " ++ base64:encode_to_string(string:join([Username, Password], ":"))}].
 
 gen_query_str(OptStr, CurStr) ->
     case {OptStr, CurStr} of
